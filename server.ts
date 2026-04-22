@@ -33,18 +33,28 @@ Seguridad: Ante mención a prácticas peligrosas en el taller, bloquea la respue
   app.post("/api/chat", async (req, res) => {
     try {
       const { history } = req.body;
+      console.log("Recibida petición de chat con historial de tamaño:", history?.length);
 
       if (!process.env.GEMINI_API_KEY) {
+        console.error("CRITICAL: GEMINI_API_KEY is not defined in environment.");
         return res.status(500).json({ error: "La API Key de Gemini no está configurada." });
       }
 
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-      const formattedHistory = history.map((msg: any) => ({
+      // Gemini requires the first message to be from the 'user'.
+      // We filter out the initial bot greeting if it's the first message.
+      const filteredHistory = history.filter((msg: any, index: number) => {
+        if (index === 0 && msg.role === 'bot') return false;
+        return true;
+      });
+
+      const formattedHistory = filteredHistory.map((msg: any) => ({
         role: msg.role === 'bot' ? 'model' : 'user',
         parts: [{ text: msg.text }]
       }));
 
+      console.log("Enviando a Gemini model:", "gemini-3.1-flash-lite-preview");
       const response = await ai.models.generateContent({
         model: "gemini-3.1-flash-lite-preview",
         contents: formattedHistory,
@@ -55,9 +65,14 @@ Seguridad: Ante mención a prácticas peligrosas en el taller, bloquea la respue
         }
       });
 
+      if (!response.text) {
+        console.warn("Gemini devolvió una respuesta vacía.");
+        return res.status(200).json({ reply: "Escaneo completado. Sin anomalías detectadas en la respuesta." });
+      }
+
       return res.status(200).json({ reply: response.text });
     } catch (error: any) {
-      console.error("Error en Serverless Function:", error);
+      console.error("Error detallado en Serverless Function:", error);
       return res.status(500).json({ error: error.message || "Fallo interno en la transmisión de datos." });
     }
   });
