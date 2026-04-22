@@ -2,13 +2,17 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import "dotenv/config";
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Needed to parse JSON bodies
+  // Middleware
   app.use(express.json());
+
+  // Log environment status (Safe keys only)
+  console.log("[SERVER] Environment check: GEMINI_API_KEY is", process.env.GEMINI_API_KEY ? "CONFIGURED" : "MISSING");
 
   const SYSTEM_PROMPT = `
 P - PERSONALIDAD:
@@ -28,6 +32,7 @@ No al halago: Nunca digas "¡Muy bien!" o "¡Excelente trabajo!". Usa "Parámetr
 Pensamiento Crítico: Si el alumno pregunta algo directamente ("¿Qué es una palanca?"), responde con un reto: "Mis archivos están dañados. Si una resistencia de 50kg está a 2m del punto de apoyo, ¿dónde pondrías la fuerza para moverla con el mínimo esfuerzo? Explícamelo para restaurar mi base de datos".
 Seguridad: Ante mención a prácticas peligrosas en el taller, bloquea la respuesta y emite "Protocolo de Seguridad Nivel 5: Riesgo de daño físico detectado".
 `;
+
 
   // API Route FIRST
   app.post("/api/chat", async (req, res) => {
